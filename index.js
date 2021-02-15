@@ -4,7 +4,7 @@ const User = require('./models/User');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const config = require('./config/key');
-
+const { auth } = require('./middleware/auth');
 const app = express();
 
 const port = 5000;
@@ -25,10 +25,10 @@ mongoose
   .catch((err) => console.log(err));
 
 app.get('/', (req, res) => {
-  res.send('<h2>Hello World! Nodemon Works</h2>');
+  res.send('<h2>Hello World!</h2>');
 });
 
-app.post('/register', (req, res) => {
+app.post('/api/users/register', (req, res) => {
   //Get user information from the client and put that into the database
   const user = new User(req.body);
   user.save((err, userInfo) => {
@@ -37,7 +37,7 @@ app.post('/register', (req, res) => {
   });
 });
 
-app.post('/login', (req, res) => {
+app.post('/api/users/login', (req, res) => {
   //요청된 이메일을 데이터베이스에서 있는지 찾는다
   User.findOne({ email: req.body.email }, (err, user) => {
     if (!user) {
@@ -54,16 +54,39 @@ app.post('/login', (req, res) => {
           loginSuccess: false,
           message: '비밀번호가 틀렸습니다.',
         });
+
       //비밀번호가 맞다면 토큰 발행
       user.generateToken((err, user) => {
         if (err) return res.status(400).send(err);
         //토큰을 저장한다. 어디에? 쿠키, 로컬스토리지
         res
-          .cookie('x_auth', user.cookie)
+          .cookie('x_auth', user.token)
           .status(200)
           .json({ loginSuccess: true, userID: user._id });
       });
     });
+  });
+});
+
+app.get('/api/users/auth', auth, (req, res) => {
+  //여기 까지 미들웨어를 통과해 왔다는 얘기는 Authentication이 True라는 뜻
+
+  res.status(200).json({
+    _id: req.user._id,
+    isAdmin: req.user.role === 0 ? false : true,
+    isAuth: true,
+    email: req.user.email,
+    name: req.user.name,
+    lastname: req.user.lastname,
+    role: req.user.role,
+    image: req.user.image,
+  });
+});
+
+app.get('/api/users/logout', auth, (req, res) => {
+  User.findOneAndUpdate({ _id: req.user._id }, { token: '' }, (err, user) => {
+    if (err) return res.json({ success: false, err });
+    return res.status(200).send({ success: true });
   });
 });
 
