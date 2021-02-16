@@ -28,6 +28,10 @@ app.get('/', (req, res) => {
   res.send('<h2>Hello World!</h2>');
 });
 
+app.get('/api/hello', (req,res) =>{
+  res.send("Hello~~~~");
+})
+
 app.post('/api/users/register', (req, res) => {
   //Get user information from the client and put that into the database
   const user = new User(req.body);
